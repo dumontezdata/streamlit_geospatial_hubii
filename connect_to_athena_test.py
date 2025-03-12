@@ -4,6 +4,7 @@ import boto3
 from pyathena import connect
 import folium
 from folium.plugins import MarkerCluster
+import branca
 
 AWS_ACCESS_KEY = st.secrets["AWS_ACCESS_KEY"]
 AWS_SECRET_KEY = st.secrets["AWS_SECRET_KEY"]
@@ -92,46 +93,44 @@ m = folium.Map(location=[-23.550520, -46.633308], zoom_start=12)  # Posição in
 # Filtrar hubs que não possuem valores NaN para latitude e longitude
 df_hubs_clean = df_hubs.dropna(subset=['hub_latitude', 'hub_longitude'])
 
-# Adicionar marcadores para os hubs
+# Criar uma escala de cores para hubs com base no score
+score_hub_scale = branca.colormap.LinearColormap(
+    ['green', 'yellow', 'red'], vmin=df_hubs_clean['score_hub'].min(), vmax=df_hubs_clean['score_hub'].max()
+)
+
+# Adicionar marcadores para os hubs, coloridos de acordo com o score_hub
 hub_cluster = MarkerCluster().add_to(m)
 
 for _, row in df_hubs_clean.iterrows():
     folium.Marker(
         location=[row['hub_latitude'], row['hub_longitude']],
         popup=f"Hub: {row['best_hub_name']} - Score: {row['score_hub']}",
-        icon=folium.Icon(color="blue")
+        icon=folium.Icon(color=score_hub_scale(row['score_hub']))  # Colorir com base no score_hub
     ).add_to(hub_cluster)
 
-# Exibir o mapa no Streamlit
-st.components.v1.html(m._repr_html_(), height=500)
-
-# Filtro de pedidos por hub
-st.subheader("Pedidos por Hub")
-selected_hub = st.selectbox("Escolha um Hub", df_hubs['best_hub_name'].unique())
-
-# Filtrar os pedidos para o hub selecionado
-df_filtered = df_pedidos[df_pedidos['best_hub_name'] == selected_hub]
-
 # Filtrar pedidos que não possuem valores NaN para latitude e longitude
-df_filtered_clean = df_filtered.dropna(subset=['order_latitude', 'order_longitude'])
+df_filtered_clean = df_pedidos.dropna(subset=['order_latitude', 'order_longitude'])
 
-# Exibir informações sobre os pedidos filtrados
-st.write(f"Total de Pedidos para o Hub {selected_hub}: {df_filtered_clean.shape[0]}")
-st.dataframe(df_filtered_clean[['order_id', 'ordered_at_brt', 'gmv', 'delivery_status']])
+# Criar uma escala de cores para pedidos com base no GMV
+gmv_scale = branca.colormap.LinearColormap(
+    ['blue', 'yellow', 'red'], vmin=df_filtered_clean['gmv'].min(), vmax=df_filtered_clean['gmv'].max()
+)
 
-# Gráfico de distribuição de GMV
-st.subheader(f"Distribuição de GMV - {selected_hub}")
-st.bar_chart(df_filtered_clean.groupby('delivery_status')['gmv'].sum())
-
-# Adicionar marcadores para pedidos no mapa
+# Adicionar marcadores para os pedidos, coloridos de acordo com o GMV
 pedido_cluster = MarkerCluster().add_to(m)
 
 for _, row in df_filtered_clean.iterrows():
     folium.Marker(
         location=[row['order_latitude'], row['order_longitude']],
         popup=f"Pedido ID: {row['order_id']} - GMV: {row['gmv']}",
-        icon=folium.Icon(color="red")
+        icon=folium.Icon(color=gmv_scale(row['gmv']))  # Colorir com base no GMV
     ).add_to(pedido_cluster)
 
-# Atualizar mapa com pedidos
+# Exibir as escalas de cores
+st.markdown("**Escala de cores dos Hubs (por Score)**:")
+st.write(score_hub_scale)
+st.markdown("**Escala de cores dos Pedidos (por GMV)**:")
+st.write(gmv_scale)
+
+# Exibir o mapa no Streamlit
 st.components.v1.html(m._repr_html_(), height=500)
