@@ -30,7 +30,7 @@ query1 = """SELECT
     time_first_pending_brt,
     fact_order.hub_id,
     dim_hubs.best_hub_name,
-    dim_hubs.praça_hub,
+    dim_hubs."praça_hub",
     channel_id,
     channels.name AS channel_name,
     company_id,
@@ -47,7 +47,7 @@ FROM gold.fact_order
 JOIN gold.dim_hubs ON dim_hubs.hub_id = fact_order.hub_id
 JOIN bronze.companies ON companies.id = fact_order.company_id
 JOIN bronze.channels ON channels.id = fact_order.channel_id
-WHERE date_order_created_at_brt >= '2024-01-01'
+WHERE date_order_created_at_brt >= '2025-01-01'
 AND unique_order_shipping_cost < 0
 """
 
@@ -56,6 +56,7 @@ df_pedidos = pd.read_sql(query1, conn)
 query2 = """with df as(SELECT 
     order_hub_sent.hub_id,
     dim_hubs.best_hub_name,
+    companies.name,
     'home' as "icon",
     dim_hubs.hub_latitude,
     dim_hubs.hub_longitude,
@@ -71,15 +72,14 @@ query2 = """with df as(SELECT
     AVG(CASE WHEN final_action_treated = 'accepted' AND wave = 1 THEN straight_line_distance_order_hub_km ELSE NULL END) AS "km_medio_aceite_wave_1"
 FROM silver.order_hub_sent
 join gold.dim_hubs on dim_hubs.hub_id=order_hub_sent.hub_id
-WHERE date_order_created_at_brt >= '2024-01-01'
-AND {{COMPANY_ID}} AND {{data_disparo}}
-GROUP BY 1,2,3,4,5,6
+JOIN bronze.companies ON companies.id = order_hub_sent.company_id_order
+WHERE date_order_created_at_brt >= '2025-01-01'
+GROUP BY 1,2,3,4,5,6,7
 )
 
 select *,taxa_resposta * taxa_aceite as score_hub from df where aceitos>0
 """
 df_hubs = pd.read_sql(query2, conn)
-
 
 # Configuração inicial do Streamlit
 st.title("Dashboard Geoespacial - Pedidos e Hubs")
