@@ -89,13 +89,16 @@ st.markdown("Visualização de dados geoespaciais relacionados a pedidos e hubs 
 st.subheader("Mapa Interativo")
 m = folium.Map(location=[-23.550520, -46.633308], zoom_start=12)  # Posição inicial (São Paulo, Brasil)
 
+# Filtrar hubs que não possuem valores NaN para latitude e longitude
+df_hubs_clean = df_hubs.dropna(subset=['hub_latitude', 'hub_longitude'])
+
 # Adicionar marcadores para os hubs
 hub_cluster = MarkerCluster().add_to(m)
 
-for _, row in df_hubs.iterrows():
+for _, row in df_hubs_clean.iterrows():
     folium.Marker(
         location=[row['hub_latitude'], row['hub_longitude']],
-        popup=f"Hub: {row['name']} - Score: {row['score_hub']}",
+        popup=f"Hub: {row['best_hub_name']} - Score: {row['score_hub']}",
         icon=folium.Icon(color="blue")
     ).add_to(hub_cluster)
 
@@ -104,23 +107,26 @@ st.components.v1.html(m._repr_html_(), height=500)
 
 # Filtro de pedidos por hub
 st.subheader("Pedidos por Hub")
-selected_hub = st.selectbox("Escolha um Hub", df_hubs['name'].unique())
+selected_hub = st.selectbox("Escolha um Hub", df_hubs['best_hub_name'].unique())
 
 # Filtrar os pedidos para o hub selecionado
 df_filtered = df_pedidos[df_pedidos['best_hub_name'] == selected_hub]
 
+# Filtrar pedidos que não possuem valores NaN para latitude e longitude
+df_filtered_clean = df_filtered.dropna(subset=['order_latitude', 'order_longitude'])
+
 # Exibir informações sobre os pedidos filtrados
-st.write(f"Total de Pedidos para o Hub {selected_hub}: {df_filtered.shape[0]}")
-st.dataframe(df_filtered[['order_id', 'ordered_at_brt', 'gmv', 'delivery_status']])
+st.write(f"Total de Pedidos para o Hub {selected_hub}: {df_filtered_clean.shape[0]}")
+st.dataframe(df_filtered_clean[['order_id', 'ordered_at_brt', 'gmv', 'delivery_status']])
 
 # Gráfico de distribuição de GMV
 st.subheader(f"Distribuição de GMV - {selected_hub}")
-st.bar_chart(df_filtered.groupby('delivery_status')['gmv'].sum())
+st.bar_chart(df_filtered_clean.groupby('delivery_status')['gmv'].sum())
 
 # Adicionar marcadores para pedidos no mapa
 pedido_cluster = MarkerCluster().add_to(m)
 
-for _, row in df_filtered.iterrows():
+for _, row in df_filtered_clean.iterrows():
     folium.Marker(
         location=[row['order_latitude'], row['order_longitude']],
         popup=f"Pedido ID: {row['order_id']} - GMV: {row['gmv']}",
