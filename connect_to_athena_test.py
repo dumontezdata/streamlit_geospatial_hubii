@@ -2,9 +2,8 @@ import streamlit as st
 import pandas as pd
 import boto3
 from pyathena import connect
-import folium
-from folium.plugins import MarkerCluster
-import branca
+from keplergl import KeplerGl
+
 
 AWS_ACCESS_KEY = st.secrets["AWS_ACCESS_KEY"]
 AWS_SECRET_KEY = st.secrets["AWS_SECRET_KEY"]
@@ -82,55 +81,64 @@ select *,taxa_resposta * taxa_aceite as score_hub from df where aceitos>0
 """
 df_hubs = pd.read_sql(query2, conn)
 
-# Configuração inicial do Streamlit
-st.title("Dashboard Geoespacial - Pedidos e Hubs")
-st.markdown("Visualização de dados geoespaciais relacionados a pedidos e hubs de distribuição.")
+# Inicializando o Kepler.gl
+map_ = KeplerGl(height=600)
 
-# Mapa inicial
-st.subheader("Mapa Interativo")
-m = folium.Map(location=[-23.550520, -46.633308], zoom_start=12)  # Posição inicial (São Paulo, Brasil)
+# Adicionando os dados de pedidos ao mapa
+map_.add_data(data=df_pedidos, name="Pedidos")
 
-# Filtrar hubs que não possuem valores NaN para latitude e longitude
-df_hubs_clean = df_hubs.dropna(subset=['hub_latitude', 'hub_longitude'])
+# Adicionando os dados de hubs ao mapa
+map_.add_data(data=df_hubs, name="Hubs")
 
-# Criar uma escala de cores para hubs com base no score
-score_hub_scale = branca.colormap.LinearColormap(
-    ['green', 'yellow', 'red'], vmin=df_hubs_clean['score_hub'].min(), vmax=df_hubs_clean['score_hub'].max()
-)
+# Configurando a camada de pedidos para colorir por GMV
+map_.config = {
+    "visState": {
+        "layers": [
+            {
+                "id": "Pedidos",
+                "type": "point",
+                "config": {
+                    "colorField": {"name": "gmv", "type": "real"},
+                    "colorScale": "quantile",
+                    "colorRange": {
+                        "name": "Uber Viz Diverging",
+                        "type": "diverging",
+                        "category": "Uber",
+                        "colors": ["#f3f0c2", "#ff4d3b", "#ff1a2e"]
+                    },
+                    "sizeField": {"name": "gmv", "type": "real"},
+                    "sizeScale": "linear",
+                    "sizeRange": [5, 20],
+                    "visible": True
+                }
+            },
+            {
+                "id": "Hubs",
+                "type": "point",
+                "config": {
+                    "colorField": {"name": "score_hub", "type": "real"},
+                    "colorScale": "quantile",
+                    "colorRange": {
+                        "name": "Uber Viz Diverging",
+                        "type": "diverging",
+                        "category": "Uber",
+                        "colors": ["#00d6b4", "#00468c", "#ff1a2e"]
+                    },
+                    "sizeField": {"name": "score_hub", "type": "real"},
+                    "sizeScale": "linear",
+                    "sizeRange": [5, 20],
+                    "visible": True
+                }
+            }
+        ]
+    }
+}
 
-# Adicionar marcadores para os hubs, coloridos de acordo com o score_hub
-hub_cluster = MarkerCluster().add_to(m)
 
-for _, row in df_hubs_clean.iterrows():
-    folium.Marker(
-        location=[row['hub_latitude'], row['hub_longitude']],
-        popup=f"Hub: {row['best_hub_name']} - Score: {row['score_hub']}",
-        icon=folium.Icon(color=score_hub_scale(row['score_hub']))  # Colorir com base no score_hub
-    ).add_to(hub_cluster)
+# Exibindo o mapa no Streamlit
+st.title("Mapa Interativo de Pedidos e Hubs")
+st.write("Pedidos coloridos por GMV e Hubs coloridos por Score de Hub")
 
-# Filtrar pedidos que não possuem valores NaN para latitude e longitude
-df_filtered_clean = df_pedidos.dropna(subset=['order_latitude', 'order_longitude'])
-
-# Criar uma escala de cores para pedidos com base no GMV
-gmv_scale = branca.colormap.LinearColormap(
-    ['blue', 'yellow', 'red'], vmin=df_filtered_clean['gmv'].min(), vmax=df_filtered_clean['gmv'].max()
-)
-
-# Adicionar marcadores para os pedidos, coloridos de acordo com o GMV
-pedido_cluster = MarkerCluster().add_to(m)
-
-for _, row in df_filtered_clean.iterrows():
-    folium.Marker(
-        location=[row['order_latitude'], row['order_longitude']],
-        popup=f"Pedido ID: {row['order_id']} - GMV: {row['gmv']}",
-        icon=folium.Icon(color=gmv_scale(row['gmv']))  # Colorir com base no GMV
-    ).add_to(pedido_cluster)
-
-# Exibir as escalas de cores
-st.markdown("**Escala de cores dos Hubs (por Score)**:")
-st.write(score_hub_scale)
-st.markdown("**Escala de cores dos Pedidos (por GMV)**:")
-st.write(gmv_scale)
-
-# Exibir o mapa no Streamlit
-st.components.v1.html(m._repr_html_(), height=500)
+# Exibindo o mapa no Streamlit
+st_kepler_map = st.empty()
+st_kepler_map.pydeck_chart(map_)
