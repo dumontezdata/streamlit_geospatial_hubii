@@ -1,30 +1,25 @@
-import os
-from dotenv import load_dotenv
 import streamlit as st
 import pandas as pd
 import boto3
 from pyathena import connect
 
-load_dotenv()
-
-AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY")
-AWS_SECRET_KEY = os.getenv("AWS_SECRET_KEY")
-AWS_REGION = os.getenv("AWS_REGION")
-S3_STAGING_DIR = os.getenv("S3_STAGING_DIR")
-
+AWS_ACCESS_KEY = st.secrets["AWS_ACCESS_KEY"]
+AWS_SECRET_KEY = st.secrets["AWS_SECRET_KEY"]
+AWS_REGION = st.secrets["AWS_REGION"]
+S3_STAGING_DIR = st.secrets["S3_STAGING_DIR"]
 
 athena_client = boto3.client(
     "athena",
     aws_access_key_id=AWS_ACCESS_KEY,
     aws_secret_access_key=AWS_SECRET_KEY,
-    region_name='us-east-1'
+    region_name=AWS_REGION
 )
 
 conn = connect(
     aws_access_key_id=AWS_ACCESS_KEY,
     aws_secret_access_key=AWS_SECRET_KEY,
     s3_staging_dir=S3_STAGING_DIR,
-    region_name='us-east-1'
+    region_name=AWS_REGION
 )
 
 query = "select * from gold.fact_order_item limit 5"
