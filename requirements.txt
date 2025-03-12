@@ -2,3 +2,4 @@ boto3
 pyathena
 python-dotenv
 keplergl
+streamlit-keplergl

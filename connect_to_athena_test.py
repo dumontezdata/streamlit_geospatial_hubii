@@ -3,6 +3,7 @@ import pandas as pd
 import boto3
 from pyathena import connect
 from keplergl import KeplerGl
+from streamlit_keplergl import keplergl_static
 
 
 AWS_ACCESS_KEY = st.secrets["AWS_ACCESS_KEY"]
@@ -81,13 +82,13 @@ select *,taxa_resposta * taxa_aceite as score_hub from df where aceitos>0
 """
 df_hubs = pd.read_sql(query2, conn)
 
-# Inicializando o Kepler.gl
+# Create the KeplerGl map
 map_ = KeplerGl(height=600)
 
-# Adicionando os dados de pedidos ao mapa
+# Adding the 'pedidos' data to the map
 map_.add_data(data=df_pedidos, name="Pedidos")
 
-# Adicionando os dados de hubs ao mapa
+# Adding the 'hubs' data to the map
 map_.add_data(data=df_hubs, name="Hubs")
 
 # Configurando a camada de pedidos para colorir por GMV
@@ -134,11 +135,11 @@ map_.config = {
     }
 }
 
+# Display the map with Streamlit
+st.title("Interactive Map of Orders and Hubs")
+st.write("Orders colored by GMV and Hubs colored by Hub Score")
 
-# Exibindo o mapa no Streamlit
-st.title("Mapa Interativo de Pedidos e Hubs")
-st.write("Pedidos coloridos por GMV e Hubs coloridos por Score de Hub")
-
-# Exibindo o mapa no Streamlit
-st_kepler_map = st.empty()
-st_kepler_map.pydeck_chart(map_)
+# Display the KeplerGl map using keplergl_static inside a column (optional)
+col1 = st.columns(1)[0]
+with col1:
+    keplergl_static(map_, height=600, width=800, center_map=True, read_only=False)
