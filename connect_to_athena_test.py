@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import boto3
 from pyathena import connect
+import folium
+from folium.plugins import MarkerCluster
 
 AWS_ACCESS_KEY = st.secrets["AWS_ACCESS_KEY"]
 AWS_SECRET_KEY = st.secrets["AWS_SECRET_KEY"]
@@ -22,31 +24,108 @@ conn = connect(
     region_name=AWS_REGION
 )
 
-query = "select * from gold.fact_order_item limit 5"
-df = pd.read_sql(query, conn)
+query1 = """SELECT 
+    order_id,
+    ordered_at_brt,
+    time_first_pending_brt,
+    fact_order.hub_id,
+    dim_hubs.best_hub_name,
+    dim_hubs.praça_hub,
+    channel_id,
+    channels.name AS channel_name,
+    company_id,
+    companies.name AS company_name,
+    delivery_status,
+    max_wave,
+    straight_line_distance_order_hub_km,
+    unique_order_shipping_cost AS custo_frete,
+    order_tip_fee_prorate AS gorjeta_pedido,
+    order_latitude,
+    order_longitude,
+    subtotal_sell_out AS gmv
+FROM gold.fact_order
+JOIN gold.dim_hubs ON dim_hubs.hub_id = fact_order.hub_id
+JOIN bronze.companies ON companies.id = fact_order.company_id
+JOIN bronze.channels ON channels.id = fact_order.channel_id
+WHERE date_order_created_at_brt >= '2024-01-01'
+AND unique_order_shipping_cost < 0
+"""
+
+df_pedidos = pd.read_sql(query1, conn)
+
+query2 = """with df as(SELECT 
+    order_hub_sent.hub_id,
+    dim_hubs.best_hub_name,
+    'home' as "icon",
+    dim_hubs.hub_latitude,
+    dim_hubs.hub_longitude,
+    date_format(hub_pending_at_brt,'%Y-%m') as "year_month",
+    SUM(CASE WHEN final_action_treated IN ('accepted', 'refused', 'ignored') THEN 1 ELSE 0 END) AS "pedidos",
+    SUM(CASE WHEN final_action_treated = 'accepted' THEN 1 ELSE 0 END) AS "aceitos",
+    SUM(CASE WHEN final_action_treated IN ('accepted', 'refused') THEN 1 ELSE 0 END) AS "respondidos",
+    SUM(CASE WHEN final_action_treated IN ('accepted', 'refused') THEN 1 ELSE 0 END) 
+        / CAST(NULLIF(SUM(CASE WHEN final_action_treated IN ('accepted', 'refused', 'ignored') THEN 1 ELSE 0 END), 0) AS DOUBLE) AS "taxa_resposta",
+    SUM(CASE WHEN final_action_treated = 'accepted' THEN 1 ELSE 0 END) 
+        / CAST(NULLIF(SUM(CASE WHEN final_action_treated IN ('accepted', 'refused') THEN 1 ELSE 0 END), 0) AS DOUBLE) AS "taxa_aceite",
+    AVG(CASE WHEN final_action_treated = 'accepted' THEN straight_line_distance_order_hub_km ELSE NULL END) AS "km_medio_aceite",
+    AVG(CASE WHEN final_action_treated = 'accepted' AND wave = 1 THEN straight_line_distance_order_hub_km ELSE NULL END) AS "km_medio_aceite_wave_1"
+FROM silver.order_hub_sent
+join gold.dim_hubs on dim_hubs.hub_id=order_hub_sent.hub_id
+WHERE date_order_created_at_brt >= '2024-01-01'
+AND {{COMPANY_ID}} AND {{data_disparo}}
+GROUP BY 1,2,3,4,5,6
+)
+
+select *,taxa_resposta * taxa_aceite as score_hub from df where aceitos>0
+"""
+df_hubs = pd.read_sql(query2, conn)
 
 
+# Configuração inicial do Streamlit
+st.title("Dashboard Geoespacial - Pedidos e Hubs")
+st.markdown("Visualização de dados geoespaciais relacionados a pedidos e hubs de distribuição.")
 
+# Mapa inicial
+st.subheader("Mapa Interativo")
+m = folium.Map(location=[-23.550520, -46.633308], zoom_start=12)  # Posição inicial (São Paulo, Brasil)
 
-st.set_page_config(page_title="Monitoramento de Preços", layout="wide")
-st.title("📊 Monitoramento de Preço - Hubii")
+# Adicionar marcadores para os hubs
+hub_cluster = MarkerCluster().add_to(m)
 
-# Criando as abas no Streamlit
-tab1, tab2 = st.tabs(["📌 Arquitetura de Preço Referência", "📊 Beleza em Casa iFood"])
+for _, row in df_hubs.iterrows():
+    folium.Marker(
+        location=[row['hub_latitude'], row['hub_longitude']],
+        popup=f"Hub: {row['name']} - Score: {row['score_hub']}",
+        icon=folium.Icon(color="blue")
+    ).add_to(hub_cluster)
 
-# Tab 1: Arquitetura de Preço Referência**
-with tab1:
-    st.subheader("📌 Arquitetura de Preço - Referência da Indústria")
-    
-    col1, col2 = st.columns([0.25, 0.75])
-    
-    with col1:
-        opcao_busca = st.radio("🔍 Buscar por:", ["EAN", "Marca", "Nome do Produto"], horizontal=True)
-        desconto_sugerido = st.number_input("🔻 Desconto Sugerido (%)", min_value=0.0, max_value=100.0, value=10.0, step=0.5)
+# Exibir o mapa no Streamlit
+st.components.v1.html(m._repr_html_(), height=500)
 
-# tab2: Beleza em Casa iFood**
-with tab2:
-    st.subheader("📊 Beleza em Casa iFood - Monitoramento de Preços")
-    st.write("### 📄 Comparação de Preços")
-    st.dataframe(df)
-    st.write("O Price Index calculado na tabela acima é o comparativo do valor praticano no ifood com a tabela de referência fornecida pelo Boticário.")
+# Filtro de pedidos por hub
+st.subheader("Pedidos por Hub")
+selected_hub = st.selectbox("Escolha um Hub", df_hubs['name'].unique())
+
+# Filtrar os pedidos para o hub selecionado
+df_filtered = df_pedidos[df_pedidos['best_hub_name'] == selected_hub]
+
+# Exibir informações sobre os pedidos filtrados
+st.write(f"Total de Pedidos para o Hub {selected_hub}: {df_filtered.shape[0]}")
+st.dataframe(df_filtered[['order_id', 'ordered_at_brt', 'gmv', 'delivery_status']])
+
+# Gráfico de distribuição de GMV
+st.subheader(f"Distribuição de GMV - {selected_hub}")
+st.bar_chart(df_filtered.groupby('delivery_status')['gmv'].sum())
+
+# Adicionar marcadores para pedidos no mapa
+pedido_cluster = MarkerCluster().add_to(m)
+
+for _, row in df_filtered.iterrows():
+    folium.Marker(
+        location=[row['order_latitude'], row['order_longitude']],
+        popup=f"Pedido ID: {row['order_id']} - GMV: {row['gmv']}",
+        icon=folium.Icon(color="red")
+    ).add_to(pedido_cluster)
+
+# Atualizar mapa com pedidos
+st.components.v1.html(m._repr_html_(), height=500)
