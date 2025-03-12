@@ -17,14 +17,14 @@ athena_client = boto3.client(
     "athena",
     aws_access_key_id=AWS_ACCESS_KEY,
     aws_secret_access_key=AWS_SECRET_KEY,
-    region_name=AWS_REGION,
+    region_name='us-east-1'
 )
 
 conn = connect(
     aws_access_key_id=AWS_ACCESS_KEY,
     aws_secret_access_key=AWS_SECRET_KEY,
     s3_staging_dir=S3_STAGING_DIR,
-    region_name=AWS_REGION,
+    region_name='us-east-1'
 )
 
 query = "select * from gold.fact_order_item limit 5"
