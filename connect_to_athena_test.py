@@ -136,8 +136,8 @@ map_.config = {
 }
 
 # Display the map with Streamlit
-st.title("Interactive Map of Orders and Hubs")
-st.write("Orders colored by GMV and Hubs colored by Hub Score")
+#st.title("Interactive Map of Orders and Hubs")
+#st.write("Orders colored by GMV and Hubs colored by Hub Score")
 st.set_page_config(page_title="Monitoramento de Preços", layout="wide")
 
 # Display the KeplerGl map using keplergl_static inside a column (optional)
