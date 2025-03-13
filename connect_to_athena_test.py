@@ -156,5 +156,5 @@ st.markdown(
     </style>
     """, unsafe_allow_html=True)
 
-# Use KeplerGl static map and make it responsive
-keplergl_static(map_, height="90vh", width="100%", read_only=True)  # 90vh for dynamic height and 100% width
+# Use KeplerGl static map with specific height and width
+keplergl_static(map_, height="600px", width="100%", read_only=True)  # Set fixed height to 600px and width to 100%
