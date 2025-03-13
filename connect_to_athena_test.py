@@ -139,7 +139,22 @@ map_.config = {
     }
 }
 
-# Set the Streamlit page layout to wide
+# Set Streamlit page layout to wide (this already works, keep it at the top of your script)
 st.set_page_config(page_title="Monitoramento de Preços", layout="wide")
 
-keplergl_static(map_, height=600, width=800, read_only=True)  # Disable interactivity
+# Now instead of setting fixed height, we can use full screen with a streamlit container
+st.markdown(
+    """
+    <style>
+        .main .block-container {
+            max-width: 100%;
+            padding-top: 0rem;
+            padding-right: 0rem;
+            padding-left: 0rem;
+            padding-bottom: 0rem;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+# Use KeplerGl static map and make it responsive
+keplergl_static(map_, height="90vh", width="100%", read_only=True)  # 90vh for dynamic height and 100% width
