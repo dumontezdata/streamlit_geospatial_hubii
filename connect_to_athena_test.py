@@ -48,7 +48,7 @@ FROM gold.fact_order
 JOIN gold.dim_hubs ON dim_hubs.hub_id = fact_order.hub_id
 JOIN bronze.companies ON companies.id = fact_order.company_id
 JOIN bronze.channels ON channels.id = fact_order.channel_id
-WHERE date_order_created_at_brt >= '2025-01-01'
+WHERE date_order_created_at_brt >= '2025-03-01'
 AND unique_order_shipping_cost < 0
 """
 
@@ -74,7 +74,7 @@ query2 = """with df as(SELECT
 FROM silver.order_hub_sent
 join gold.dim_hubs on dim_hubs.hub_id=order_hub_sent.hub_id
 JOIN bronze.companies ON companies.id = order_hub_sent.company_id_order
-WHERE date_order_created_at_brt >= '2025-01-01'
+WHERE date_order_created_at_brt >= '2025-03-01'
 GROUP BY 1,2,3,4,5,6,7
 )
 
