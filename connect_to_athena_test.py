@@ -142,4 +142,4 @@ map_.config = {
 # Set the Streamlit page layout to wide
 st.set_page_config(page_title="Monitoramento de Preços", layout="wide")
 
-keplergl_static(map_, height=600, width=800, read_only=True)  # Disable interactivity
+map_.show()
