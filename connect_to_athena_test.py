@@ -4,7 +4,9 @@ import boto3
 from pyathena import connect
 from keplergl import KeplerGl
 from streamlit_keplergl import keplergl_static
+import numpy as np
 
+st.set_page_config(page_title="Monitoramento de Preços", layout="wide")
 
 AWS_ACCESS_KEY = st.secrets["AWS_ACCESS_KEY"]
 AWS_SECRET_KEY = st.secrets["AWS_SECRET_KEY"]
@@ -82,15 +84,19 @@ select *,taxa_resposta * taxa_aceite as score_hub from df where aceitos>0
 """
 df_hubs = pd.read_sql(query2, conn)
 
+df_hubs_clean = df_hubs.dropna(subset=['hub_latitude', 'hub_longitude']).replace([np.inf, -np.inf], np.nan).dropna()
+df_pedidos_clean = df_pedidos.dropna(subset=['order_latitude', 'order_longitude']).replace([np.inf, -np.inf], np.nan).dropna()
+df_pedidos_clean['ordered_at_brt']= df_pedidos_clean['ordered_at_brt'].astype(str)
+df_pedidos_clean['time_first_pending_brt'] = df_pedidos_clean['time_first_pending_brt'].astype(str)
+
 # Create the KeplerGl map
 map_ = KeplerGl(height=600)
 
 # Adding the 'pedidos' data to the map
-map_.add_data(data=df_pedidos, name="Pedidos")
+map_.add_data(data=df_pedidos_clean, name="Pedidos")
 
 # Adding the 'hubs' data to the map
-map_.add_data(data=df_hubs, name="Hubs")
-
+map_.add_data(data=df_hubs_clean, name="Hubs")
 # Configurando a camada de pedidos para colorir por GMV
 map_.config = {
     "visState": {
