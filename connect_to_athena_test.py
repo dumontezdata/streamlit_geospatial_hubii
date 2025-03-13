@@ -141,6 +141,5 @@ map_.config = {
 st.set_page_config(page_title="Monitoramento de Preços", layout="wide")
 
 # Display the KeplerGl map using keplergl_static inside a column (optional)
-col1 = st.columns(1)[0]
-with col1:
-    keplergl_static(map_, height=600, width=800, center_map=True, read_only=False)
+
+keplergl_static(map_, height=600, width=800, center_map=True, read_only=False)
