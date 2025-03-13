@@ -142,13 +142,4 @@ map_.config = {
 # Set the Streamlit page layout to wide
 st.set_page_config(page_title="Monitoramento de Preços", layout="wide")
 
-# Create a container for the map to make it occupy full screen
-container = st.container()
-with container:
-    
-    # You can remove the dynamic size logic
-    # Display a message to check dimensions (this will only show values that do not change)
-    st.write("Fixed map size (height: 600px, width: 800px)")
-    
-    # Use fixed size for KeplerGl map
-    keplergl_static(map_, height=600, width=800, read_only=False)  # Fixed size for now
+keplergl_static(map_, height=600, width=800, read_only=True)  # Disable interactivity
