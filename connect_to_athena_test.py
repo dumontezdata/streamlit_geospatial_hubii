@@ -146,4 +146,5 @@ st.set_page_config(page_title="Monitoramento de Preços", layout="wide")
 container = st.container()
 with container:
     # Display the KeplerGl map with dynamic size
-    keplergl_static(map_, height=container.height, width=container.width, read_only=False)
+    st.write(container.height, container.width)  # Debugging line
+    keplergl_static(map_, height=600, width=800, read_only=False)  # Fixed size or dynamic size after debugging
