@@ -142,19 +142,6 @@ map_.config = {
 # Set Streamlit page layout to wide (this already works, keep it at the top of your script)
 st.set_page_config(page_title="Monitoramento de Preços", layout="wide")
 
-# Now instead of setting fixed height, we can use full screen with a streamlit container
-st.markdown(
-    """
-    <style>
-        .main .block-container {
-            max-width: 100%;
-            padding-top: 0rem;
-            padding-right: 0rem;
-            padding-left: 0rem;
-            padding-bottom: 0rem;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-
-# Use KeplerGl static map with specific height and width
-keplergl_static(map_, height="600px", width="100%", read_only=True)  # Set fixed height to 600px and width to 100%
+# Adjusting the layout with the container
+with st.container():
+    keplergl_static(map_, read_only=True)
