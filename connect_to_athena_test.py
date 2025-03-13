@@ -6,8 +6,6 @@ from keplergl import KeplerGl
 from streamlit_keplergl import keplergl_static
 import numpy as np
 
-st.set_page_config(page_title="Monitoramento de Preços", layout="wide")
-
 AWS_ACCESS_KEY = st.secrets["AWS_ACCESS_KEY"]
 AWS_SECRET_KEY = st.secrets["AWS_SECRET_KEY"]
 AWS_REGION = st.secrets["AWS_REGION"]
