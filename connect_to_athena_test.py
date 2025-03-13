@@ -145,6 +145,7 @@ st.set_page_config(page_title="Monitoramento de Preços", layout="wide")
 # Create a container for the map to make it occupy full screen
 container = st.container()
 with container:
+    
     # Display the KeplerGl map with dynamic size
     st.write(container.height, container.width)  # Debugging line
     keplergl_static(map_, height=600, width=800, read_only=False)  # Fixed size or dynamic size after debugging
