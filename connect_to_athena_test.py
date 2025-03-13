@@ -144,4 +144,4 @@ st.set_page_config(page_title="Monitoramento de Preços", layout="wide")
 
 # Adjusting the layout with the container
 with st.container():
-    keplergl_static(map_)
+    keplergl_static(map_,read_only=False)
